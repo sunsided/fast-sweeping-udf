@@ -7,3 +7,7 @@ To run an example that outputs the distance field into PGM pictures `test-distan
 ```shell
 cargo run --example write_pgm
 ```
+
+| Obstacles                                  | Distance Field                                                  |
+|--------------------------------------------|-----------------------------------------------------------------|
+| ![Obstacle Map](readme/test-obstacles.jpg) | ![Resulting Unsigned Distance Field](readme/test-distances.jpg) |
