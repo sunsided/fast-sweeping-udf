@@ -3,7 +3,7 @@ use crate::{Grid, SavePgm};
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-use std::slice::{Iter, IterMut};
+use std::slice::{from_raw_parts_mut, Iter, IterMut};
 
 /// The distance field.
 pub struct DistanceField {
@@ -15,17 +15,22 @@ pub struct DistanceField {
 impl DistanceField {
     pub const MAX_DISTANCE: f32 = f32::INFINITY;
 
+    #[inline(always)]
     pub const fn width(&self) -> usize {
         self.width
     }
 
+    #[inline(always)]
     pub const fn height(&self) -> usize {
         self.height
     }
 
+    #[inline(always)]
     pub fn iter(&self) -> Iter<'_, f32> {
         self.distances.iter()
     }
+
+    #[inline(always)]
     pub fn iter_mut(&mut self) -> IterMut<'_, f32> {
         self.distances.iter_mut()
     }
@@ -54,10 +59,25 @@ impl Grid for DistanceField {
         self.distances[y * self.width + x] = value
     }
 
+    #[inline(always)]
+    fn get_rows_mut(&mut self, y: usize) -> (&mut [Self::Item], &mut [Self::Item]) {
+        let top = y * self.width;
+        let bottom = (y + 1) * self.width;
+        let ptr = self.distances.as_mut_ptr();
+        unsafe {
+            (
+                from_raw_parts_mut(ptr.add(top), self.width),
+                from_raw_parts_mut(ptr.add(bottom), self.width),
+            )
+        }
+    }
+
+    #[inline(always)]
     fn iter(&self) -> Iter<'_, Self::Item> {
         self.iter()
     }
 
+    #[inline(always)]
     fn iter_mut(&mut self) -> IterMut<'_, Self::Item> {
         self.iter_mut()
     }

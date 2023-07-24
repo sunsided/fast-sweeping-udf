@@ -18,6 +18,9 @@ pub trait Grid {
     fn get_at(&self, x: usize, y: usize) -> &Self::Item;
     fn set_at(&mut self, x: usize, y: usize, value: Self::Item);
 
+    /// Returns the specified row and the row below it.
+    fn get_rows_mut(&mut self, y: usize) -> (&mut [Self::Item], &mut [Self::Item]);
+
     fn iter(&self) -> std::slice::Iter<'_, Self::Item>;
     fn iter_mut(&mut self) -> std::slice::IterMut<'_, Self::Item>;
 }
@@ -26,6 +29,7 @@ pub trait SavePgm {
     fn save_pgm(&self, file_name: &PathBuf) -> std::io::Result<()>;
 }
 
+#[inline(always)]
 fn min3(a: f32, b: f32, c: f32) -> f32 {
     a.min(b).min(c)
 }

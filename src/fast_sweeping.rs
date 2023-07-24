@@ -41,10 +41,13 @@ impl NaiveFastSweepingMethod {
         let num_iter = self.num_iter;
         let step_size = self.step_size;
 
+        let height = distance_field.height();
+        let width = distance_field.width();
+
         for _i in 0..num_iter {
             // First forward sweep (sweeping from top-left to bottom-right)
-            for y in 1..distance_field.height() {
-                for x in 1..distance_field.width() {
+            for y in 1..height {
+                for x in 1..width {
                     let left_neighbor = *distance_field.get_at(x - 1, y);
                     let center = *distance_field.get_at(x, y);
                     let up_neighbor = *distance_field.get_at(x, y - 1);
@@ -53,13 +56,13 @@ impl NaiveFastSweepingMethod {
                         x,
                         y,
                         min3(center, up_neighbor + step_size, left_neighbor + step_size),
-                    )
+                    );
                 }
             }
 
             // Second forward sweep (sweeping from bottom-right to top-left)
-            for y in (0..(distance_field.height() - 1)).rev() {
-                for x in (0..(distance_field.width() - 1)).rev() {
+            for y in (0..(height - 1)).rev() {
+                for x in (0..(width - 1)).rev() {
                     let center = *distance_field.get_at(x, y);
                     let right_neighbor = *distance_field.get_at(x + 1, y);
                     let down_neighbor = *distance_field.get_at(x, y + 1);
@@ -77,8 +80,8 @@ impl NaiveFastSweepingMethod {
             }
 
             // Third backward sweep (sweeping from top-right to bottom-left)
-            for y in 1..distance_field.height() {
-                for x in (0..(distance_field.width() - 1)).rev() {
+            for y in 1..height {
+                for x in (0..(width - 1)).rev() {
                     let center = *distance_field.get_at(x, y);
                     let right_neighbor = *distance_field.get_at(x + 1, y);
                     let up_neighbor = *distance_field.get_at(x, y - 1);
@@ -92,8 +95,8 @@ impl NaiveFastSweepingMethod {
             }
 
             // Fourth backward sweep (sweeping from bottom-left to top-right)
-            for y in (0..(distance_field.height() - 1)).rev() {
-                for x in 1..distance_field.width() {
+            for y in (0..(height - 1)).rev() {
+                for x in 1..width {
                     let left_neighbor = *distance_field.get_at(x - 1, y);
                     let center = *distance_field.get_at(x, y);
                     let down_neighbor = *distance_field.get_at(x, y + 1);

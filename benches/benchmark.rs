@@ -11,7 +11,7 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let naive = NaiveFastSweepingMethod::new(0.1, 1);
 
         b.iter(|| {
-            let mut distance_field = DistanceField::from(&obstacles);
+            let mut distance_field = DistanceField::from(black_box(&obstacles));
             naive.calculate_distance_field(black_box(&mut distance_field), black_box(&obstacles));
         })
     });
@@ -23,7 +23,31 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let naive = NaiveFastSweepingMethod::new(0.1, 10);
 
         b.iter(|| {
-            let mut distance_field = DistanceField::from(&obstacles);
+            let mut distance_field = DistanceField::from(black_box(&obstacles));
+            naive.calculate_distance_field(black_box(&mut distance_field), black_box(&obstacles));
+        })
+    });
+
+    c.bench_function("1280×960, step 0.1, 1 iteration", |b| {
+        let mut obstacles = Obstacles::new(1280, 960);
+        example_obstacles_640x480(&mut obstacles);
+
+        let naive = NaiveFastSweepingMethod::new(0.1, 1);
+
+        b.iter(|| {
+            let mut distance_field = DistanceField::from(black_box(&obstacles));
+            naive.calculate_distance_field(black_box(&mut distance_field), black_box(&obstacles));
+        })
+    });
+
+    c.bench_function("1280×960, step 0.1, 1 iteration (noinit)", |b| {
+        let mut obstacles = Obstacles::new(1280, 960);
+        example_obstacles_640x480(&mut obstacles);
+
+        let naive = NaiveFastSweepingMethod::new(0.1, 1);
+        let mut distance_field = DistanceField::from(black_box(&obstacles));
+
+        b.iter(|| {
             naive.calculate_distance_field(black_box(&mut distance_field), black_box(&obstacles));
         })
     });

@@ -2,7 +2,7 @@ use crate::{Grid, SavePgm};
 use std::fs::File;
 use std::io::Write;
 use std::path::PathBuf;
-use std::slice::{Iter, IterMut};
+use std::slice::{from_raw_parts_mut, Iter, IterMut};
 
 /// Binary map of obstacles.
 pub struct Obstacles {
@@ -20,10 +20,12 @@ impl Obstacles {
         }
     }
 
+    #[inline(always)]
     pub fn iter(&self) -> Iter<'_, bool> {
         self.obstacles.iter()
     }
 
+    #[inline(always)]
     pub fn iter_mut(&mut self) -> IterMut<'_, bool> {
         self.obstacles.iter_mut()
     }
@@ -42,10 +44,26 @@ impl Grid for Obstacles {
         self.obstacles[y * self.width + x] = value
     }
 
+    #[inline(always)]
+    #[allow(dead_code)]
+    fn get_rows_mut(&mut self, y: usize) -> (&mut [Self::Item], &mut [Self::Item]) {
+        let top = y * self.width;
+        let bottom = (y + 1) * self.width;
+        let ptr = self.obstacles.as_mut_ptr();
+        unsafe {
+            (
+                from_raw_parts_mut(ptr.add(top), self.width),
+                from_raw_parts_mut(ptr.add(bottom), self.width),
+            )
+        }
+    }
+
+    #[inline(always)]
     fn iter(&self) -> Iter<'_, Self::Item> {
         self.iter()
     }
 
+    #[inline(always)]
     fn iter_mut(&mut self) -> IterMut<'_, Self::Item> {
         self.iter_mut()
     }
