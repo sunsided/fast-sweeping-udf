@@ -1,19 +1,18 @@
 use criterion::{black_box, criterion_group, criterion_main, Criterion};
-use fast_sweeping::{fast_sweeping, DistanceField, Grid, Obstacles};
+use fast_sweeping::{
+    DistanceField, DistanceFieldAlgorithm, Grid, NaiveFastSweepingMethod, Obstacles,
+};
 
 pub fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("640×480, step 0.1, 1 iteration", |b| {
         let mut obstacles = Obstacles::new(640, 480);
         example_obstacles_640x480(&mut obstacles);
 
+        let naive = NaiveFastSweepingMethod::new(0.1, 1);
+
         b.iter(|| {
             let mut distance_field = DistanceField::from(&obstacles);
-            fast_sweeping(
-                black_box(&mut distance_field),
-                black_box(&obstacles),
-                black_box(0.1),
-                black_box(1),
-            );
+            naive.calculate_distance_field(black_box(&mut distance_field), black_box(&obstacles));
         })
     });
 
@@ -21,14 +20,11 @@ pub fn criterion_benchmark(c: &mut Criterion) {
         let mut obstacles = Obstacles::new(640, 480);
         example_obstacles_640x480(&mut obstacles);
 
+        let naive = NaiveFastSweepingMethod::new(0.1, 10);
+
         b.iter(|| {
             let mut distance_field = DistanceField::from(&obstacles);
-            fast_sweeping(
-                black_box(&mut distance_field),
-                black_box(&obstacles),
-                black_box(0.1),
-                black_box(10),
-            );
+            naive.calculate_distance_field(black_box(&mut distance_field), black_box(&obstacles));
         })
     });
 }

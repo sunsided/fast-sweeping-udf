@@ -13,3 +13,5 @@ This is the outcome. (For better visibility, the distance field shows the square
 | Obstacles                                  | Distance Field (sqrt)                                           |
 |--------------------------------------------|-----------------------------------------------------------------|
 | ![Obstacle Map](readme/test-obstacles.jpg) | ![Resulting Unsigned Distance Field](readme/test-distances.jpg) |
+
+A naive Fast Sweeping implementation can be found in [`src/fast_sweeping.rs`](src/fast_sweeping.rs).

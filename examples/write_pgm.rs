@@ -1,4 +1,6 @@
-use fast_sweeping::{fast_sweeping, DistanceField, Grid, Obstacles, SavePgm};
+use fast_sweeping::{
+    DistanceField, DistanceFieldAlgorithm, Grid, NaiveFastSweepingMethod, Obstacles, SavePgm,
+};
 use std::path::PathBuf;
 
 fn main() {
@@ -19,7 +21,8 @@ fn main() {
     let mut distance_field = DistanceField::from(&obstacles);
 
     println!("Sweeping ...");
-    fast_sweeping(&mut distance_field, &obstacles, 0.1, 5);
+    let naive = NaiveFastSweepingMethod::new(0.1, 5);
+    naive.calculate_distance_field(&mut distance_field, &obstacles);
 
     println!("Saving distance field to PGM ...");
     distance_field
