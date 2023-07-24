@@ -39,74 +39,106 @@ impl NaiveFastSweepingMethod {
 
     fn perform_sweeps(&self, distance_field: &mut DistanceField) {
         let num_iter = self.num_iter;
-        let step_size = self.step_size;
+        for _i in 0..num_iter {
+            self.sweep_topleft_bottomright(distance_field);
+            self.sweep_bottomright_topleft(distance_field);
+            self.sweep_topright_borromleft(distance_field);
+            self.sweep_bottomleft_topright(distance_field);
+        }
+    }
 
+    // First forward sweep (sweeping from top-left to bottom-right)
+    fn sweep_topleft_bottomright(&self, distance_field: &mut DistanceField) {
+        let step_size = self.step_size;
         let height = distance_field.height();
         let width = distance_field.width();
 
-        for _i in 0..num_iter {
-            // First forward sweep (sweeping from top-left to bottom-right)
-            for y in 1..height {
-                for x in 1..width {
-                    let left_neighbor = *distance_field.get_at(x - 1, y);
-                    let center = *distance_field.get_at(x, y);
-                    let up_neighbor = *distance_field.get_at(x, y - 1);
+        for y in 1..height {
+            // Initialize the left neighbor as the left-most pixel in the row.
+            let mut left_neighbor = *distance_field.get_at(0, y);
+            for x in 1..width {
+                let center = *distance_field.get_at(x, y);
+                let up_neighbor = *distance_field.get_at(x, y - 1);
 
-                    distance_field.set_at(
-                        x,
-                        y,
-                        min3(center, up_neighbor + step_size, left_neighbor + step_size),
-                    );
-                }
+                let new_value = min3(center, up_neighbor + step_size, left_neighbor + step_size);
+                distance_field.set_at(x, y, new_value);
+
+                // Replace the left neighbor with the new center value.
+                // This skips the otherwise required reload in the next iteration.
+                left_neighbor = new_value;
             }
+        }
+    }
 
-            // Second forward sweep (sweeping from bottom-right to top-left)
-            for y in (0..(height - 1)).rev() {
-                for x in (0..(width - 1)).rev() {
-                    let center = *distance_field.get_at(x, y);
-                    let right_neighbor = *distance_field.get_at(x + 1, y);
-                    let down_neighbor = *distance_field.get_at(x, y + 1);
+    // Second forward sweep (sweeping from bottom-right to top-left)
+    fn sweep_bottomright_topleft(&self, distance_field: &mut DistanceField) {
+        let step_size = self.step_size;
+        let height = distance_field.height();
+        let width = distance_field.width();
 
-                    distance_field.set_at(
-                        x,
-                        y,
-                        min3(
-                            center,
-                            down_neighbor + step_size,
-                            right_neighbor + step_size,
-                        ),
-                    )
-                }
+        for y in (0..(height - 1)).rev() {
+            // Initialize the right neighbor as the right-most pixel in the row.
+            let mut right_neighbor = *distance_field.get_at(width - 1, y);
+            for x in (0..(width - 1)).rev() {
+                let center = *distance_field.get_at(x, y);
+                let down_neighbor = *distance_field.get_at(x, y + 1);
+
+                let new_value = min3(
+                    center,
+                    down_neighbor + step_size,
+                    right_neighbor + step_size,
+                );
+                distance_field.set_at(x, y, new_value);
+
+                // Replace the right neighbor with the new center value.
+                // This skips the otherwise required reload in the next iteration.
+                right_neighbor = new_value;
             }
+        }
+    }
 
-            // Third backward sweep (sweeping from top-right to bottom-left)
-            for y in 1..height {
-                for x in (0..(width - 1)).rev() {
-                    let center = *distance_field.get_at(x, y);
-                    let right_neighbor = *distance_field.get_at(x + 1, y);
-                    let up_neighbor = *distance_field.get_at(x, y - 1);
+    // Third backward sweep (sweeping from top-right to bottom-left)
+    fn sweep_topright_borromleft(&self, distance_field: &mut DistanceField) {
+        let step_size = self.step_size;
+        let height = distance_field.height();
+        let width = distance_field.width();
 
-                    distance_field.set_at(
-                        x,
-                        y,
-                        min3(center, up_neighbor + step_size, right_neighbor + step_size),
-                    )
-                }
+        for y in 1..height {
+            // Initialize the right neighbor as the right-most pixel in the row.
+            let mut right_neighbor = *distance_field.get_at(width - 1, y);
+            for x in (0..(width - 1)).rev() {
+                let center = *distance_field.get_at(x, y);
+                let up_neighbor = *distance_field.get_at(x, y - 1);
+
+                let new_value = min3(center, up_neighbor + step_size, right_neighbor + step_size);
+                distance_field.set_at(x, y, new_value);
+
+                // Replace the right neighbor with the new center value.
+                // This skips the otherwise required reload in the next iteration.
+                right_neighbor = new_value;
             }
+        }
+    }
 
-            // Fourth backward sweep (sweeping from bottom-left to top-right)
-            for y in (0..(height - 1)).rev() {
-                for x in 1..width {
-                    let left_neighbor = *distance_field.get_at(x - 1, y);
-                    let center = *distance_field.get_at(x, y);
-                    let down_neighbor = *distance_field.get_at(x, y + 1);
+    // Fourth backward sweep (sweeping from bottom-left to top-right)
+    fn sweep_bottomleft_topright(&self, distance_field: &mut DistanceField) {
+        let step_size = self.step_size;
+        let height = distance_field.height();
+        let width = distance_field.width();
 
-                    distance_field.set_at(
-                        x,
-                        y,
-                        min3(center, down_neighbor + step_size, left_neighbor + step_size),
-                    )
-                }
+        for y in (0..(height - 1)).rev() {
+            // Initialize the left neighbor as the left-most pixel in the row.
+            let mut left_neighbor = *distance_field.get_at(0, y);
+            for x in 1..width {
+                let center = *distance_field.get_at(x, y);
+                let down_neighbor = *distance_field.get_at(x, y + 1);
+
+                let new_value = min3(center, down_neighbor + step_size, left_neighbor + step_size);
+                distance_field.set_at(x, y, new_value);
+
+                // Replace the left neighbor with the new center value.
+                // This skips the otherwise required reload in the next iteration.
+                left_neighbor = new_value;
             }
         }
     }
