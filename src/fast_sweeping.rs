@@ -471,4 +471,136 @@ mod tests {
             assert!(!dist.is_nan(), "NaN should not occur in distance field");
         }
     }
+
+    #[test]
+    fn test_manhattan_distance_single_obstacle_center() {
+        let mut obstacles = Obstacles::new(7, 7);
+        obstacles.set_at(3, 3, true);
+        let mut df = DistanceField::from(&obstacles);
+        let algo = NaiveFastSweepingMethod::default();
+        algo.calculate_distance_field(&mut df, &obstacles);
+
+        assert_eq!(*df.get_at(3, 3), 0.0);
+        assert_eq!(*df.get_at(3, 2), 1.0);
+        assert_eq!(*df.get_at(3, 4), 1.0);
+        assert_eq!(*df.get_at(2, 3), 1.0);
+        assert_eq!(*df.get_at(4, 3), 1.0);
+        assert_eq!(*df.get_at(3, 1), 2.0);
+        assert_eq!(*df.get_at(3, 5), 2.0);
+        assert_eq!(*df.get_at(1, 3), 2.0);
+        assert_eq!(*df.get_at(5, 3), 2.0);
+        assert_eq!(*df.get_at(2, 2), 2.0);
+        assert_eq!(*df.get_at(2, 4), 2.0);
+        assert_eq!(*df.get_at(4, 2), 2.0);
+        assert_eq!(*df.get_at(4, 4), 2.0);
+        assert_eq!(*df.get_at(0, 0), 6.0);
+    }
+
+    #[test]
+    fn test_manhattan_distance_corner_obstacle() {
+        let mut obstacles = Obstacles::new(5, 5);
+        obstacles.set_at(0, 0, true);
+        let mut df = DistanceField::from(&obstacles);
+        let algo = NaiveFastSweepingMethod::default();
+        algo.calculate_distance_field(&mut df, &obstacles);
+
+        assert_eq!(*df.get_at(0, 0), 0.0);
+        assert_eq!(*df.get_at(1, 0), 1.0);
+        assert_eq!(*df.get_at(0, 1), 1.0);
+        assert_eq!(*df.get_at(2, 0), 2.0);
+        assert_eq!(*df.get_at(1, 1), 2.0);
+        assert_eq!(*df.get_at(0, 2), 2.0);
+        assert_eq!(*df.get_at(4, 4), 8.0);
+    }
+
+    #[test]
+    fn test_manhattan_distance_edge_obstacle() {
+        let mut obstacles = Obstacles::new(5, 5);
+        obstacles.set_at(2, 0, true);
+        let mut df = DistanceField::from(&obstacles);
+        let algo = NaiveFastSweepingMethod::default();
+        algo.calculate_distance_field(&mut df, &obstacles);
+
+        assert_eq!(*df.get_at(2, 0), 0.0);
+        assert_eq!(*df.get_at(1, 0), 1.0);
+        assert_eq!(*df.get_at(3, 0), 1.0);
+        assert_eq!(*df.get_at(2, 1), 1.0);
+        assert_eq!(*df.get_at(0, 0), 2.0);
+        assert_eq!(*df.get_at(4, 0), 2.0);
+        assert_eq!(*df.get_at(1, 1), 2.0);
+        assert_eq!(*df.get_at(3, 1), 2.0);
+        assert_eq!(*df.get_at(2, 2), 2.0);
+    }
+
+    #[test]
+    fn test_closest_obstacle_wins() {
+        let mut obstacles = Obstacles::new(7, 7);
+        obstacles.set_at(0, 0, true);
+        obstacles.set_at(6, 6, true);
+        let mut df = DistanceField::from(&obstacles);
+        let algo = NaiveFastSweepingMethod::default();
+        algo.calculate_distance_field(&mut df, &obstacles);
+
+        assert_eq!(*df.get_at(3, 3), 6.0);
+        assert_eq!(*df.get_at(1, 1), 2.0);
+        assert_eq!(*df.get_at(5, 5), 2.0);
+    }
+
+    #[test]
+    fn test_distance_with_step_size_half() {
+        let mut obstacles = Obstacles::new(5, 5);
+        obstacles.set_at(0, 0, true);
+        let mut df = DistanceField::from(&obstacles);
+        let algo = NaiveFastSweepingMethod::default().with_step_size(0.5);
+        algo.calculate_distance_field(&mut df, &obstacles);
+
+        assert_eq!(*df.get_at(1, 0), 0.5);
+        assert_eq!(*df.get_at(0, 1), 0.5);
+        assert_eq!(*df.get_at(2, 0), 1.0);
+        assert_eq!(*df.get_at(1, 1), 1.0);
+        assert_eq!(*df.get_at(0, 2), 1.0);
+        assert_eq!(*df.get_at(4, 4), 4.0);
+    }
+
+    #[test]
+    fn test_line_obstacle_distances() {
+        let mut obstacles = Obstacles::new(7, 7);
+        for y in 0..7 {
+            obstacles.set_at(3, y, true);
+        }
+        let mut df = DistanceField::from(&obstacles);
+        let algo = NaiveFastSweepingMethod::default();
+        algo.calculate_distance_field(&mut df, &obstacles);
+
+        for y in 0..7 {
+            assert_eq!(*df.get_at(3, y), 0.0);
+            assert_eq!(*df.get_at(2, y), 1.0);
+            assert_eq!(*df.get_at(4, y), 1.0);
+            assert_eq!(*df.get_at(0, y), 3.0);
+            assert_eq!(*df.get_at(6, y), 3.0);
+        }
+    }
+
+    #[test]
+    fn test_distance_field_max_distance_constant() {
+        assert_eq!(DistanceField::MAX_DISTANCE, f32::INFINITY);
+    }
+
+    #[test]
+    fn test_no_distance_decreases_after_convergence() {
+        let mut obstacles = Obstacles::new(7, 7);
+        obstacles.set_at(3, 3, true);
+
+        let mut df1 = DistanceField::from(&obstacles);
+        let algo1 = NaiveFastSweepingMethod::default();
+        algo1.calculate_distance_field(&mut df1, &obstacles);
+
+        let mut df2 = DistanceField::from(&obstacles);
+        let algo2 = NaiveFastSweepingMethod::default();
+        algo2.calculate_distance_field(&mut df2, &obstacles);
+
+        for (a, b) in df1.iter().zip(df2.iter()) {
+            assert_eq!(*a, *b);
+        }
+    }
 }

@@ -161,7 +161,13 @@ mod tests {
         let path = "test_obstacles_dark.pgm";
         obs.save_pgm(path).unwrap();
         let content = fs::read(path).unwrap();
-        let header_end = content.iter().enumerate().filter(|(_, &b)| b == b'\n').map(|(i, _)| i).nth(2).unwrap();
+        let header_end = content
+            .iter()
+            .enumerate()
+            .filter(|(_, &b)| b == b'\n')
+            .map(|(i, _)| i)
+            .nth(2)
+            .unwrap();
         let data = &content[header_end + 1..];
         assert_eq!(data.len(), 9);
         assert_eq!(data[0], 0);
