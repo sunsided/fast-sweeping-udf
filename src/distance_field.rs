@@ -2,10 +2,12 @@ use crate::obstacles::Obstacles;
 use crate::{Grid, SavePgm};
 use std::fs::File;
 use std::io::Write;
-use std::path::PathBuf;
-use std::slice::{from_raw_parts_mut, Iter, IterMut};
+use std::path::Path;
 
-/// The distance field.
+/// A 2D grid representing computed distance values.
+///
+/// Each cell contains the distance to the nearest obstacle.
+#[derive(Debug, Clone)]
 pub struct DistanceField {
     distances: Vec<f32>,
     width: usize,
@@ -13,90 +15,86 @@ pub struct DistanceField {
 }
 
 impl DistanceField {
+    /// Maximum distance value used for initialization.
     pub const MAX_DISTANCE: f32 = f32::INFINITY;
 
-    #[inline(always)]
+    /// Creates a new distance field with the given dimensions.
+    ///
+    /// All distances are initialized to [`MAX_DISTANCE`](DistanceField::MAX_DISTANCE).
+    pub fn new(width: usize, height: usize) -> Self {
+        Self {
+            distances: vec![Self::MAX_DISTANCE; width * height],
+            width,
+            height,
+        }
+    }
+
+    /// Returns the width of the distance field.
     pub const fn width(&self) -> usize {
         self.width
     }
 
-    #[inline(always)]
+    /// Returns the height of the distance field.
     pub const fn height(&self) -> usize {
         self.height
     }
 
-    #[inline(always)]
-    pub fn iter(&self) -> Iter<'_, f32> {
+    /// Returns an iterator over the distance values.
+    pub fn iter(&self) -> std::slice::Iter<'_, f32> {
         self.distances.iter()
     }
 
-    #[inline(always)]
-    pub fn iter_mut(&mut self) -> IterMut<'_, f32> {
+    /// Returns a mutable iterator over the distance values.
+    pub fn iter_mut(&mut self) -> std::slice::IterMut<'_, f32> {
         self.distances.iter_mut()
+    }
+
+    /// Returns mutable slices for two adjacent rows.
+    ///
+    /// Returns `(row_y, row_y_plus_1)`. The caller must ensure `y + 1 < height`.
+    pub fn get_rows_mut(&mut self, y: usize) -> (&mut [f32], &mut [f32]) {
+        let top = y * self.width;
+        let bottom = (y + 1) * self.width;
+        let (top_part, bottom_part) = self.distances.split_at_mut(bottom);
+        (&mut top_part[top..], bottom_part)
     }
 }
 
 impl From<&Obstacles> for DistanceField {
     fn from(value: &Obstacles) -> Self {
-        Self {
-            distances: vec![0_f32; value.obstacles.len()],
-            width: value.width,
-            height: value.height,
-        }
+        Self::new(value.width(), value.height())
     }
 }
 
 impl Grid for DistanceField {
     type Item = f32;
 
-    #[inline(always)]
     fn get_at(&self, x: usize, y: usize) -> &Self::Item {
         &self.distances[y * self.width + x]
     }
 
-    #[inline(always)]
     fn set_at(&mut self, x: usize, y: usize, value: Self::Item) {
         self.distances[y * self.width + x] = value
-    }
-
-    #[inline(always)]
-    fn get_rows_mut(&mut self, y: usize) -> (&mut [Self::Item], &mut [Self::Item]) {
-        let top = y * self.width;
-        let bottom = (y + 1) * self.width;
-        let ptr = self.distances.as_mut_ptr();
-        unsafe {
-            (
-                from_raw_parts_mut(ptr.add(top), self.width),
-                from_raw_parts_mut(ptr.add(bottom), self.width),
-            )
-        }
-    }
-
-    #[inline(always)]
-    fn iter(&self) -> Iter<'_, Self::Item> {
-        self.iter()
-    }
-
-    #[inline(always)]
-    fn iter_mut(&mut self) -> IterMut<'_, Self::Item> {
-        self.iter_mut()
     }
 }
 
 impl SavePgm for DistanceField {
-    fn save_pgm(&self, file_name: &PathBuf) -> std::io::Result<()> {
-        let mut file = File::create(file_name)?;
+    fn save_pgm<P: AsRef<Path>>(&self, path: P) -> std::io::Result<()> {
+        let mut file = File::create(path)?;
 
         let max_value: u8 = 255;
-        let scaler = (max_value as f32) / self.iter().fold(0_f32, |acc, &d| acc.max(d));
+        let max_distance = self.iter().fold(0_f32, |acc, &d| acc.max(d));
+        let scaler = if max_distance > 0.0 {
+            max_value as f32 / max_distance
+        } else {
+            1.0
+        };
 
-        // Write the header
         let header = format!("P5\n{} {}\n{}\n", self.width, self.height, max_value);
         file.write_all(header.as_bytes())?;
 
-        // Convert and write the pixel data as binary
         for distance in self.iter() {
-            let value = (distance * scaler) as u8;
+            let value = (distance * scaler).clamp(0.0, max_value as f32) as u8;
             file.write_all(&[value])?;
         }
 
