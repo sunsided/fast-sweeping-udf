@@ -56,7 +56,8 @@ impl DistanceField {
         let top = y * self.width;
         let bottom = (y + 1) * self.width;
         let (top_part, bottom_part) = self.distances.split_at_mut(bottom);
-        (&mut top_part[top..], bottom_part)
+        let (row_y_plus_1, _rest) = bottom_part.split_at_mut(self.width);
+        (&mut top_part[top..], row_y_plus_1)
     }
 }
 
@@ -83,7 +84,10 @@ impl SavePgm for DistanceField {
         let mut file = File::create(path)?;
 
         let max_value: u8 = 255;
-        let max_distance = self.iter().fold(0_f32, |acc, &d| acc.max(d));
+        let max_distance = self
+            .iter()
+            .filter(|&d| d.is_finite())
+            .fold(0_f32, |acc, &d| acc.max(d));
         let scaler = if max_distance > 0.0 {
             max_value as f32 / max_distance
         } else {
@@ -99,5 +103,139 @@ impl SavePgm for DistanceField {
         }
 
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn test_new_dimensions() {
+        let df = DistanceField::new(10, 20);
+        assert_eq!(df.width(), 10);
+        assert_eq!(df.height(), 20);
+    }
+
+    #[test]
+    fn test_new_initial_values() {
+        let df = DistanceField::new(5, 5);
+        for &d in df.iter() {
+            assert_eq!(d, DistanceField::MAX_DISTANCE);
+        }
+    }
+
+    #[test]
+    fn test_width_height() {
+        let df = DistanceField::new(7, 13);
+        assert_eq!(df.width(), 7);
+        assert_eq!(df.height(), 13);
+    }
+
+    #[test]
+    fn test_iter_length() {
+        let df = DistanceField::new(10, 20);
+        assert_eq!(df.iter().count(), 200);
+    }
+
+    #[test]
+    fn test_iter_mut_modifies() {
+        let mut df = DistanceField::new(3, 3);
+        for d in df.iter_mut() {
+            *d = 42.0;
+        }
+        for &d in df.iter() {
+            assert_eq!(d, 42.0);
+        }
+    }
+
+    #[test]
+    fn test_get_rows_mut_adjacent() {
+        let mut df = DistanceField::new(4, 5);
+        for (i, d) in df.iter_mut().enumerate() {
+            *d = i as f32;
+        }
+        let (row_a, row_b) = df.get_rows_mut(2);
+        assert_eq!(row_a.len(), 4, "row_a length");
+        assert_eq!(row_b.len(), 4, "row_b length");
+        // Verify the rows are adjacent: row_a should be indices 8..12, row_b should be 12..16
+        assert_eq!(row_a[0], 8.0);
+        assert_eq!(row_b[0], 12.0);
+        // Verify modifying one doesn't affect the other
+        row_a[0] = 99.0;
+        assert_eq!(row_b[0], 12.0);
+    }
+
+    #[test]
+    fn test_grid_get_set_roundtrip() {
+        let mut df = DistanceField::new(5, 5);
+        df.set_at(2, 3, 7.5);
+        assert_eq!(*df.get_at(2, 3), 7.5);
+    }
+
+    #[test]
+    fn test_grid_coordinate_mapping() {
+        let mut df = DistanceField::new(10, 10);
+        df.set_at(1, 2, 99.0);
+        assert_eq!(df.distances[2 * 10 + 1], 99.0);
+
+        df.set_at(0, 0, 1.0);
+        assert_eq!(df.distances[0], 1.0);
+
+        df.set_at(9, 9, 2.0);
+        assert_eq!(df.distances[99], 2.0);
+    }
+
+    #[test]
+    fn test_from_obstacles() {
+        let obs = Obstacles::new(8, 12);
+        let df = DistanceField::from(&obs);
+        assert_eq!(df.width(), 8);
+        assert_eq!(df.height(), 12);
+    }
+
+    #[test]
+    fn test_save_pgm_creates_file() {
+        let df = DistanceField::new(4, 4);
+        let path = "test_distance_field_pgm.pgm";
+        df.save_pgm(path).unwrap();
+        let content = fs::read(path).unwrap();
+        let header = std::str::from_utf8(&content[..content.len() - 16]).unwrap();
+        assert!(header.starts_with("P5\n4 4\n255\n"));
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn test_save_pgm_scales_values() {
+        let mut df = DistanceField::new(3, 3);
+        df.set_at(0, 0, 0.0);
+        df.set_at(1, 1, 1.0);
+        df.set_at(2, 2, 2.0);
+        let path = "test_distance_field_scale.pgm";
+        df.save_pgm(path).unwrap();
+        let content = fs::read(path).unwrap();
+        let header = format!("P5\n3 3\n255\n");
+        assert!(content.starts_with(header.as_bytes()));
+        let data = &content[header.len()..];
+        assert_eq!(data.len(), 9);
+        assert_eq!(data[0], 0);
+        assert_eq!(data[8], 255);
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn test_save_pgm_ignores_infinity() {
+        let mut df = DistanceField::new(3, 3);
+        df.set_at(0, 0, 0.0);
+        df.set_at(1, 1, 1.0);
+        let path = "test_distance_field_infinity.pgm";
+        df.save_pgm(path).unwrap();
+        let content = fs::read(path).unwrap();
+        let header_end = content.iter().enumerate().filter(|(_, &b)| b == b'\n').map(|(i, _)| i).nth(2).unwrap();
+        let data = &content[header_end + 1..];
+        assert_eq!(data.len(), 9);
+        assert!(data[4] > 0);
+        fs::remove_file(path).unwrap();
     }
 }

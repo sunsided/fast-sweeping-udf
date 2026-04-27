@@ -29,3 +29,28 @@ pub trait SavePgm {
 fn min3(a: f32, b: f32, c: f32) -> f32 {
     a.min(b).min(c)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_min3_basic() {
+        assert_eq!(min3(1.0, 2.0, 3.0), 1.0);
+    }
+
+    #[test]
+    fn test_min3_all_equal() {
+        assert_eq!(min3(5.0, 5.0, 5.0), 5.0);
+    }
+
+    #[test]
+    fn test_min3_negative() {
+        assert_eq!(min3(-1.0, 2.0, 3.0), -1.0);
+    }
+
+    #[test]
+    fn test_min3_infinity() {
+        assert_eq!(min3(f32::INFINITY, 1.0, 2.0), 1.0);
+    }
+}

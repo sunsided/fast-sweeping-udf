@@ -75,3 +75,97 @@ impl SavePgm for Obstacles {
         Ok(())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    #[test]
+    fn test_new_dimensions() {
+        let obs = Obstacles::new(10, 20);
+        assert_eq!(obs.width(), 10);
+        assert_eq!(obs.height(), 20);
+    }
+
+    #[test]
+    fn test_new_initial_values() {
+        let obs = Obstacles::new(5, 5);
+        for &b in obs.iter() {
+            assert!(!b, "All cells should be empty");
+        }
+    }
+
+    #[test]
+    fn test_width_height() {
+        let obs = Obstacles::new(7, 13);
+        assert_eq!(obs.width(), 7);
+        assert_eq!(obs.height(), 13);
+    }
+
+    #[test]
+    fn test_iter_length() {
+        let obs = Obstacles::new(10, 20);
+        assert_eq!(obs.iter().count(), 200);
+    }
+
+    #[test]
+    fn test_iter_mut_modifies() {
+        let mut obs = Obstacles::new(3, 3);
+        for b in obs.iter_mut() {
+            *b = true;
+        }
+        for &b in obs.iter() {
+            assert!(b);
+        }
+    }
+
+    #[test]
+    fn test_grid_get_set_roundtrip() {
+        let mut obs = Obstacles::new(5, 5);
+        obs.set_at(2, 3, true);
+        assert!(obs.get_at(2, 3));
+        obs.set_at(2, 3, false);
+        assert!(!obs.get_at(2, 3));
+    }
+
+    #[test]
+    fn test_grid_coordinate_mapping() {
+        let mut obs = Obstacles::new(10, 10);
+        obs.set_at(1, 2, true);
+        assert!(obs.obstacles[2 * 10 + 1]);
+
+        obs.set_at(0, 0, true);
+        assert!(obs.obstacles[0]);
+
+        obs.set_at(9, 9, true);
+        assert!(obs.obstacles[99]);
+    }
+
+    #[test]
+    fn test_save_pgm_creates_file() {
+        let obs = Obstacles::new(4, 4);
+        let path = "test_obstacles_pgm.pgm";
+        obs.save_pgm(path).unwrap();
+        let content = fs::read(path).unwrap();
+        let header = std::str::from_utf8(&content[..content.len() - 16]).unwrap();
+        assert!(header.starts_with("P5\n4 4\n255\n"));
+        fs::remove_file(path).unwrap();
+    }
+
+    #[test]
+    fn test_save_pgm_obstacle_is_dark() {
+        let mut obs = Obstacles::new(3, 3);
+        obs.set_at(0, 0, true);
+        obs.set_at(1, 1, false);
+        let path = "test_obstacles_dark.pgm";
+        obs.save_pgm(path).unwrap();
+        let content = fs::read(path).unwrap();
+        let header_end = content.iter().enumerate().filter(|(_, &b)| b == b'\n').map(|(i, _)| i).nth(2).unwrap();
+        let data = &content[header_end + 1..];
+        assert_eq!(data.len(), 9);
+        assert_eq!(data[0], 0);
+        assert_eq!(data[4], 255);
+        fs::remove_file(path).unwrap();
+    }
+}
